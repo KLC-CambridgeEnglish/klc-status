@@ -73,6 +73,9 @@ CONTROL = ("https://www.githubstatus.com/", 200, "GitHub")
 BACKUP_HEARTBEAT = "https://call.klc.lk/downloads/backup-heartbeat.json"
 BACKUP_MAX_AGE_HOURS = 30
 DISK_MIN_FREE_PCT = 15
+# Written by the monthly restore drill (restores the newest Drive backup into a throw-away database).
+RESTORE_DRILL = "https://call.klc.lk/downloads/restore-drill.json"
+RESTORE_DRILL_MAX_AGE_DAYS = 35
 
 CERT_HOSTS = ["soms.klc.lk", "parent.klc.lk", "teacher.klc.lk", "finance.klc.lk", "api.klc.lk",
               "finance-api.klc.lk", "hr.klc.lk", "hr-api.klc.lk", "call.klc.lk", "call-api.klc.lk",
@@ -275,6 +278,19 @@ def main():
             backup_warnings.append("the backup heartbeat file could not be read")
     elif not any("call.klc.lk" in p for r in down for p in r["problems"]):
         backup_warnings.append(f"the backup heartbeat is missing (HTTP {hb_status or hb_err})")
+    dr_status, dr_body, _ = fetch(RESTORE_DRILL)
+    if dr_status == 200:
+        try:
+            dr = json.loads(dr_body)
+            drill_at = parse_iso(dr.get("drill_at", ""))
+            if dr.get("ok") is not True:
+                backup_warnings.append(f"the restore drill on {dr.get('drill_at', '?')} failed ({dr.get('errors', '?')} error(s))")
+            if not drill_at or (t - drill_at).days > RESTORE_DRILL_MAX_AGE_DAYS:
+                backup_warnings.append(f"no restore drill for over {RESTORE_DRILL_MAX_AGE_DAYS} days (last: {dr.get('drill_at') or 'never'})")
+        except (ValueError, TypeError):
+            backup_warnings.append("the restore drill result could not be read")
+    elif not any("call.klc.lk" in p for r in down for p in r["problems"]):
+        backup_warnings.append(f"the restore drill result is missing (HTTP {dr_status})")
     for w in backup_warnings:
         print("BACKUP " + w)
     print(f"state={state} changed={changed}")
