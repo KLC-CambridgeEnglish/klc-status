@@ -59,7 +59,8 @@ SERVICES = [
         ("https://hr-api.klc.lk/api/zz-status-probe", 404, '"message":"Cannot GET /api/zz-status-probe"')]},
     {"id": "call", "name": "Call Centre", "checks": [
         ("https://call.klc.lk/", 200, "<title>KLC Call Intelligence</title>"),
-        ("https://call-api.klc.lk/api/v1/health", 200, '"status":"ok"')]},
+        # this health route also reports the shared database, so it doubles as a database-down check
+        ("https://call-api.klc.lk/api/v1/health", 200, '"db":"connected"')]},
     {"id": "reports", "name": "Academic Reports", "checks": [
         ("https://report.klc.lk/", 200, "<title>KLC Academic Reports</title>")]},
     {"id": "website", "name": "Website", "checks": [
@@ -67,6 +68,11 @@ SERVICES = [
 ]
 # A site outside KLC: if this also fails, the problem is the runner's own network, not KLC.
 CONTROL = ("https://www.githubstatus.com/", 200, "GitHub")
+
+# Written by the nightly backup on the server (no secrets: times, sizes, free disk space).
+BACKUP_HEARTBEAT = "https://call.klc.lk/downloads/backup-heartbeat.json"
+BACKUP_MAX_AGE_HOURS = 30
+DISK_MIN_FREE_PCT = 15
 
 CERT_HOSTS = ["soms.klc.lk", "parent.klc.lk", "teacher.klc.lk", "finance.klc.lk", "api.klc.lk",
               "finance-api.klc.lk", "hr.klc.lk", "hr-api.klc.lk", "call.klc.lk", "call-api.klc.lk",
@@ -251,6 +257,26 @@ def main():
                      if d is not None and d < CERT_WARN_DAYS]
     for w in cert_warnings:
         print("CERT " + w)
+
+    # 2b. nightly backup and disk space, from the heartbeat the backup job publishes
+    backup_warnings = []
+    hb_status, hb_body, hb_err = fetch(BACKUP_HEARTBEAT)
+    if hb_status == 200:
+        try:
+            hb = json.loads(hb_body)
+            last = parse_iso(hb.get("last_success", ""))
+            if hb.get("ok") is not True:
+                backup_warnings.append(f"the last backup run at {hb.get('last_attempt', '?')} had {hb.get('errors', '?')} error(s)")
+            if not last or (t - last).total_seconds() > BACKUP_MAX_AGE_HOURS * 3600:
+                backup_warnings.append(f"no successful backup for over {BACKUP_MAX_AGE_HOURS} hours (last: {hb.get('last_success') or 'never'})")
+            if int(hb.get("disk_free_pct", 100)) < DISK_MIN_FREE_PCT:
+                backup_warnings.append(f"the server disk is almost full ({hb.get('disk_free_pct')}% free)")
+        except (ValueError, TypeError):
+            backup_warnings.append("the backup heartbeat file could not be read")
+    elif not any("call.klc.lk" in p for r in down for p in r["problems"]):
+        backup_warnings.append(f"the backup heartbeat is missing (HTTP {hb_status or hb_err})")
+    for w in backup_warnings:
+        print("BACKUP " + w)
     print(f"state={state} changed={changed}")
 
     # 3. outage issue (best-effort; GitHub emails the owner about new issues and comments)
@@ -307,6 +333,30 @@ def main():
         if close(cert_issue, f"All certificates are fine again at {colombo(t)}."):
             cert_issue, cert_last = None, None
 
+    # backup / disk issue (daily reminder while it lasts)
+    backup_issue = internal.get("backup_issue")
+    backup_last = parse_iso(internal.get("backup_last_notice", ""))
+    if backup_warnings:
+        text = "\n".join("- " + safe(w) for w in backup_warnings)
+        if not backup_issue:
+            existing = open_issue_numbers("backup")
+            backup_issue = existing[0] if existing else None
+        if not backup_issue:
+            backup_issue = create_issue(
+                "KLC backups need attention",
+                f"Found by the outside monitor at {colombo(t)}.\n\n{text}\n\n"
+                "The nightly backup runs at 02:30 Sri Lanka time and copies encrypted backups to Google Drive "
+                "(klc.info@gmail.com, folder KLC-Server-Backups).",
+                "backup")
+            if backup_issue:
+                backup_last = t
+        elif not backup_last or (t - backup_last).total_seconds() >= 24 * 3600:
+            if comment(backup_issue, f"Still needs attention at {colombo(t)}:\n\n{text}"):
+                backup_last = t
+    elif backup_issue:
+        if close(backup_issue, f"Backups are healthy again at {colombo(t)}."):
+            backup_issue, backup_last = None, None
+
     # 4. status.json: on any change, and at least once an hour as a freshness heartbeat
     new_internal = {
         "incident_issue": issue_no,
@@ -314,6 +364,8 @@ def main():
         "ok_streak": ok_streak if issue_no else 0,
         "cert_issue": cert_issue,
         "cert_last_notice": iso(cert_last) if cert_last else "",
+        "backup_issue": backup_issue,
+        "backup_last_notice": iso(backup_last) if backup_last else "",
     }
     heartbeat = str(prev.get("checked_at", ""))[:13] != iso(t)[:13]
     publish = changed or heartbeat
