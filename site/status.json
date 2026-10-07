@@ -1,7 +1,7 @@
 {
   "state": "operational",
   "since": "2026-10-07T07:44:11Z",
-  "checked_at": "2026-10-07T07:44:11Z",
+  "checked_at": "2026-10-07T08:48:53Z",
   "services": [
     {
       "id": "soms",
@@ -49,6 +49,8 @@
     "incident_last_notice": "",
     "ok_streak": 0,
     "cert_issue": null,
-    "cert_last_notice": ""
+    "cert_last_notice": "",
+    "backup_issue": null,
+    "backup_last_notice": ""
   }
 }
