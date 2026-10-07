@@ -1,0 +1,58 @@
+name: KLC status monitor
+
+# Runs outside the KLC production server, about every 5 minutes (offset from the top of the hour,
+# when GitHub's scheduler is busiest and may delay or drop runs).
+on:
+  schedule:
+    - cron: "2-59/5 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: klc-status-monitor
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    permissions:
+      contents: write   # save site/status.json
+      issues: write     # open / comment / close outage issues (GitHub emails the owner)
+    outputs:
+      deploy: ${{ steps.run.outputs.deploy }}
+    steps:
+      # Use the newest status.json, not the commit that was current when this run was queued.
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Check KLC services and certificates
+        id: run
+        run: python3 monitor.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Save status
+        if: steps.run.outputs.written == 'true'
+        run: |
+          git config user.name "klc-status-monitor"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add site/status.json
+          git commit -m "status: ${{ steps.run.outputs.state }}"
+          for i in 1 2 3; do
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            git rebase --abort || true
+            sleep 5
+          done
+          exit 1
+
+  publish:
+    needs: check
+    if: needs.check.outputs.deploy == 'true'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/pages.yml

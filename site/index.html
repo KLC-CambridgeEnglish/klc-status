@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KLC System Status</title>
+<meta name="description" content="Live status of KLC Cambridge English online systems: SOMS, Parent Portal, Teacher Portal, Finance, HR and Call Centre.">
+<link rel="icon" href="assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Noto+Sans+Sinhala:wght@400;600&family=Noto+Sans+Tamil:wght@400;600&display=swap">
+<style>
+:root {
+  --paper: #F7F2E8; --card: #FFFFFF; --ink: #1B1D24; --mute: #4B4F5A; --faint: #6B6F78; --line: #E6E1D6;
+  --orange: #E85A1A; --orange-text: #B24210;
+  --ok: #3F8A34; --ok-wash: #E1EFD9; --ok-text: #2F6626;
+  --warn: #D9940F; --warn-wash: #FBEFD2; --warn-text: #7A4F05;
+  --bad: #C92121; --bad-wash: #F9DEDC; --bad-text: #9E1A1A;
+  --unk: #8A8D94; --unk-wash: #ECEAE4; --unk-text: #4B4F5A;
+  --display: "Bricolage Grotesque", "Plus Jakarta Sans", system-ui, sans-serif;
+  --body: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --si: "Noto Sans Sinhala", "Iskoola Pota", "Nirmala UI", sans-serif;
+  --ta: "Noto Sans Tamil", "Latha", "Nirmala UI", sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--paper); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+body.si { font-family: var(--si); }
+body.ta { font-family: var(--ta); }
+.wrap { max-width: 640px; margin: 0 auto; padding-inline: 18px; padding-block: calc(env(safe-area-inset-top, 0px) + 28px) calc(env(safe-area-inset-bottom, 0px) + 40px); display: grid; gap: 18px; }
+header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.logos { display: flex; align-items: center; gap: 14px; }
+.logos img.klc { height: 38px; width: auto; }
+.logos img.cc { height: 44px; width: auto; }
+.lang { display: flex; gap: 4px; }
+.lang button { font: inherit; font-size: 13px; font-weight: 600; background: transparent; color: var(--mute); border: 1px solid var(--line); border-radius: 999px; padding: 5px 11px; cursor: pointer; }
+.lang button[aria-pressed="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+.lang button.si { font-family: var(--si); }
+.lang button.ta { font-family: var(--ta); }
+button:focus-visible { outline: 3px solid var(--orange); outline-offset: 2px; }
+h1 { font-family: var(--display); font-size: 15px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--orange-text); margin: 6px 0 0; }
+body.si h1, body.ta h1 { font-family: inherit; letter-spacing: 0; text-transform: none; font-size: 16px; }
+.status { background: var(--card); border: 1px solid var(--line); border-radius: 24px; padding: 24px 22px; display: grid; gap: 12px; box-shadow: 0 5px 0 0 var(--line), 0 16px 34px rgba(27,29,36,.07); }
+.pill { justify-self: start; display: inline-flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; padding: 6px 12px; border-radius: 999px; background: var(--w); color: var(--t); }
+body.si .pill, body.ta .pill { letter-spacing: 0; text-transform: none; font-size: 13px; }
+.pill::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--d); }
+.s-operational { --w: var(--ok-wash); --t: var(--ok-text); --d: var(--ok); }
+.s-partial { --w: var(--warn-wash); --t: var(--warn-text); --d: var(--warn); }
+.s-outage { --w: var(--bad-wash); --t: var(--bad-text); --d: var(--bad); }
+.s-unknown { --w: var(--unk-wash); --t: var(--unk-text); --d: var(--unk); }
+.status h2 { font-family: var(--display); font-size: clamp(24px, 6vw, 30px); font-weight: 800; line-height: 1.15; letter-spacing: -0.02em; margin: 0; text-wrap: balance; }
+body.si .status h2, body.ta .status h2 { font-family: inherit; font-weight: 600; letter-spacing: 0; line-height: 1.4; }
+.status p { margin: 0; color: var(--mute); text-wrap: pretty; }
+.notice { border-radius: 16px; background: var(--warn-wash); color: var(--warn-text); padding: 14px 16px; font-weight: 600; }
+.notice[hidden] { display: none; }
+.services { background: var(--card); border: 1px solid var(--line); border-radius: 20px; overflow: hidden; }
+.services ul { list-style: none; margin: 0; padding: 0; }
+.services li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 18px; border-top: 1px solid var(--line); }
+.services li:first-child { border-top: 0; }
+.services .nm { font-weight: 600; }
+.services .st { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 600; color: var(--t); white-space: nowrap; }
+.services .st::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--d); }
+.meta { font-size: 13px; color: var(--faint); display: grid; gap: 4px; }
+.meta span:empty { display: none; }
+footer { font-size: 12.5px; color: var(--faint); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logos">
+      <img class="klc" src="assets/klc-logo.png" width="96" height="38" alt="KLC Cambridge English UK">
+      <img class="cc" src="assets/cc-logo.png" width="38" height="44" alt="Cambridge Council">
+    </div>
+    <div class="lang" role="group" aria-label="Language">
+      <button type="button" data-l="en" lang="en" aria-pressed="true">English</button>
+      <button type="button" class="si" data-l="si" lang="si" aria-pressed="false">සිංහල</button>
+      <button type="button" class="ta" data-l="ta" lang="ta" aria-pressed="false">தமிழ்</button>
+    </div>
+  </header>
+
+  <h1 id="t-title">System status</h1>
+
+  <section class="status s-unknown" id="card" aria-live="polite">
+    <span class="pill" id="pill">Checking</span>
+    <h2 id="headline">Checking the KLC systems…</h2>
+    <p id="message">This page updates by itself. There is no need to refresh.</p>
+  </section>
+
+  <div class="notice" id="notice" hidden></div>
+
+  <section class="services" aria-label="Services">
+    <ul id="list"></ul>
+  </section>
+
+  <div class="meta">
+    <span id="since"></span>
+    <span id="checked"></span>
+    <span id="t-auto">Checked automatically from outside the KLC server, about every 5 minutes.</span>
+  </div>
+
+  <noscript><p>This page needs JavaScript to show live status. Raw data: <a href="status.json">status.json</a></p></noscript>
+
+  <footer>KLC Cambridge English UK · Cambridge Council</footer>
+</div>
+
+<script>
+(function () {
+  var T = {
+    en: {
+      title: "System status", auto: "Checked automatically from outside the KLC server, about every 5 minutes.",
+      pill: { checking: "Checking", operational: "All good", partial: "Partly unavailable", outage: "Unavailable", unknown: "Status unknown" },
+      head: {
+        checking: "Checking the KLC systems…",
+        operational: "All KLC systems are working normally.",
+        partial: "Some KLC systems are not available right now.",
+        outage: "KLC systems are not available right now.",
+        unknown: "We can't confirm the status right now."
+      },
+      msg: {
+        checking: "This page updates by itself. There is no need to refresh.",
+        operational: "If something isn't working for you, please try again in a few minutes.",
+        partial: "We know about it and are working to fix it. This page updates by itself.",
+        outage: "We know about it and are working to fix it. This page updates by itself.",
+        unknown: "Please try again in a few minutes."
+      },
+      up: "Working", down: "Not available", since: "Since {d}", checked: "Last checked {d}"
+    },
+    si: {
+      title: "පද්ධති තත්ත්වය", auto: "KLC සේවාදායකයෙන් පිටත සිට, ආසන්න වශයෙන් සෑම මිනිත්තු 5කට වරක් ස්වයංක්‍රීයව පරීක්ෂා කෙරේ.",
+      pill: { checking: "පරීක්ෂා කරමින්", operational: "සියල්ල හොඳයි", partial: "අර්ධ වශයෙන් ලබා ගත නොහැක", outage: "ලබා ගත නොහැක", unknown: "තත්ත්වය තහවුරු කළ නොහැක" },
+      head: {
+        checking: "KLC පද්ධති පරීක්ෂා කරමින්…",
+        operational: "සියලුම KLC පද්ධති සාමාන්‍ය පරිදි ක්‍රියා කරයි.",
+        partial: "සමහර KLC පද්ධති මේ මොහොතේ ලබා ගත නොහැක.",
+        outage: "KLC පද්ධති මේ මොහොතේ ලබා ගත නොහැක.",
+        unknown: "මේ මොහොතේ තත්ත්වය තහවුරු කළ නොහැක."
+      },
+      msg: {
+        checking: "මෙම පිටුව ස්වයංක්‍රීයව යාවත්කාලීන වේ. නැවත පූරණය කිරීමට අවශ්‍ය නැත.",
+        operational: "යමක් ඔබට ක්‍රියා නොකරන්නේ නම්, මිනිත්තු කිහිපයකින් නැවත උත්සාහ කරන්න.",
+        partial: "අපි මේ ගැන දනිමු, එය නිවැරදි කිරීමට කටයුතු කරමින් සිටිමු. මෙම පිටුව ස්වයංක්‍රීයව යාවත්කාලීන වේ.",
+        outage: "අපි මේ ගැන දනිමු, එය නිවැරදි කිරීමට කටයුතු කරමින් සිටිමු. මෙම පිටුව ස්වයංක්‍රීයව යාවත්කාලීන වේ.",
+        unknown: "කරුණාකර මිනිත්තු කිහිපයකින් නැවත උත්සාහ කරන්න."
+      },
+      up: "ක්‍රියා කරයි", down: "ලබා ගත නොහැක", since: "{d} සිට", checked: "අවසන් වරට පරීක්ෂා කළේ {d}"
+    },
+    ta: {
+      title: "அமைப்பு நிலை", auto: "KLC சேவையகத்திற்கு வெளியிலிருந்து, ஏறக்குறைய ஒவ்வொரு 5 நிமிடத்திற்கும் தானாகச் சரிபார்க்கப்படுகிறது.",
+      pill: { checking: "சரிபார்க்கிறது", operational: "அனைத்தும் சரி", partial: "பகுதியாகக் கிடைக்கவில்லை", outage: "கிடைக்கவில்லை", unknown: "நிலை தெரியவில்லை" },
+      head: {
+        checking: "KLC அமைப்புகளைச் சரிபார்க்கிறது…",
+        operational: "அனைத்து KLC அமைப்புகளும் வழக்கம் போல் இயங்குகின்றன.",
+        partial: "சில KLC அமைப்புகள் தற்போது கிடைக்கவில்லை.",
+        outage: "KLC அமைப்புகள் தற்போது கிடைக்கவில்லை.",
+        unknown: "தற்போது நிலையை உறுதிப்படுத்த முடியவில்லை."
+      },
+      msg: {
+        checking: "இந்தப் பக்கம் தானாகவே புதுப்பிக்கப்படும். மீண்டும் ஏற்ற வேண்டியதில்லை.",
+        operational: "ஏதாவது உங்களுக்கு வேலை செய்யவில்லை என்றால், சில நிமிடங்களில் மீண்டும் முயற்சிக்கவும்.",
+        partial: "இதைப் பற்றி எங்களுக்குத் தெரியும், சரிசெய்ய முயற்சித்து வருகிறோம். இந்தப் பக்கம் தானாகவே புதுப்பிக்கப்படும்.",
+        outage: "இதைப் பற்றி எங்களுக்குத் தெரியும், சரிசெய்ய முயற்சித்து வருகிறோம். இந்தப் பக்கம் தானாகவே புதுப்பிக்கப்படும்.",
+        unknown: "தயவுசெய்து சில நிமிடங்களில் மீண்டும் முயற்சிக்கவும்."
+      },
+      up: "இயங்குகிறது", down: "கிடைக்கவில்லை", since: "{d} முதல்", checked: "கடைசியாகச் சரிபார்த்தது {d}"
+    }
+  };
+  // status.json is rewritten at least hourly; older than this means the monitor itself has stopped.
+  var STALE_HOURS = 3;
+  var lang = "en", data, notice = {};   // data stays undefined until the first load finishes
+  try { var saved = localStorage.getItem("klc-status-lang"); if (T[saved]) lang = saved; } catch (e) {}
+
+  function $(id) { return document.getElementById(id); }
+  function setText(el, s) { if (el.textContent !== s) el.textContent = s; }
+  function fmt(iso) {
+    try {
+      return new Date(iso).toLocaleString("en-GB", { timeZone: "Asia/Colombo", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit", hour12: true });
+    } catch (e) { return iso; }
+  }
+  function currentState() {
+    if (data === undefined) return "checking";
+    if (!data || !T.en.pill[data.state]) return "unknown";
+    var age = (Date.now() - Date.parse(data.checked_at)) / 3600000;
+    return isFinite(age) && age <= STALE_HOURS ? data.state : "unknown";
+  }
+  function render() {
+    var t = T[lang], state = currentState();
+    document.documentElement.lang = lang;
+    document.body.className = lang === "en" ? "" : lang;
+    setText($("t-title"), t.title);
+    setText($("t-auto"), t.auto);
+    document.querySelectorAll(".lang button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-l") === lang)); });
+
+    var cls = "status s-" + (state === "checking" ? "unknown" : state);
+    if ($("card").className !== cls) $("card").className = cls;
+    setText($("pill"), t.pill[state]);
+    setText($("headline"), t.head[state]);
+    setText($("message"), t.msg[state]);
+
+    var n = notice && typeof notice === "object" ? String(notice[lang] || notice.en || "") : "";
+    $("notice").hidden = !n;
+    setText($("notice"), n);
+
+    var list = $("list"), fresh = state !== "checking" && state !== "unknown";
+    list.textContent = "";
+    ((data && data.services) || []).forEach(function (s) {
+      var li = document.createElement("li");
+      var nm = document.createElement("span"); nm.className = "nm"; nm.lang = "en"; nm.textContent = s.name;
+      var st = document.createElement("span");
+      st.className = "st " + (!fresh ? "s-unknown" : (s.ok ? "s-operational" : "s-outage"));
+      st.textContent = !fresh ? "—" : (s.ok ? t.up : t.down);
+      li.appendChild(nm); li.appendChild(st); list.appendChild(li);
+    });
+    setText($("since"), fresh && data.since ? t.since.replace("{d}", fmt(data.since)) : "");
+    setText($("checked"), data && data.checked_at ? t.checked.replace("{d}", fmt(data.checked_at)) : "");
+  }
+  function load() {
+    fetch("status.json?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(function (j) { data = j; render(); })
+      // keep the last good data on a failed poll; the age check turns it to "unknown" if it gets old
+      .catch(function () { if (data === undefined) data = null; render(); });
+    fetch("notice.json?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : {}; })
+      .then(function (j) { notice = j || {}; render(); })
+      .catch(function () {});
+  }
+  document.querySelector(".lang").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    lang = b.getAttribute("data-l");
+    try { localStorage.setItem("klc-status-lang", lang); } catch (err) {}
+    render();
+  });
+  if (lang !== "en") render();
+  load();
+  setInterval(load, 60000);
+})();
+</script>
+</body>
+</html>

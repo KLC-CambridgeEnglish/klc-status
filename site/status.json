@@ -1,0 +1,54 @@
+{
+  "state": "operational",
+  "since": "2026-10-07T07:44:11Z",
+  "checked_at": "2026-10-07T07:44:11Z",
+  "services": [
+    {
+      "id": "soms",
+      "name": "SOMS (staff)",
+      "ok": true
+    },
+    {
+      "id": "parent",
+      "name": "Parent Portal",
+      "ok": true
+    },
+    {
+      "id": "teacher",
+      "name": "Teacher Portal",
+      "ok": true
+    },
+    {
+      "id": "finance",
+      "name": "Finance Portal",
+      "ok": true
+    },
+    {
+      "id": "hr",
+      "name": "HR",
+      "ok": true
+    },
+    {
+      "id": "call",
+      "name": "Call Centre",
+      "ok": true
+    },
+    {
+      "id": "reports",
+      "name": "Academic Reports",
+      "ok": true
+    },
+    {
+      "id": "website",
+      "name": "Website",
+      "ok": true
+    }
+  ],
+  "_monitor": {
+    "incident_issue": null,
+    "incident_last_notice": "",
+    "ok_streak": 0,
+    "cert_issue": null,
+    "cert_last_notice": ""
+  }
+}
