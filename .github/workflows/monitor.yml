@@ -6,6 +6,11 @@ on:
   schedule:
     - cron: "2-59/5 * * * *"
   workflow_dispatch:
+    inputs:
+      test_alert:
+        description: "Send a test alert (opens and closes a test issue) instead of a normal check"
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -33,6 +38,7 @@ jobs:
         run: python3 monitor.py
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TEST_ALERT: ${{ github.event.inputs.test_alert || 'false' }}
 
       - name: Save status
         if: steps.run.outputs.written == 'true'

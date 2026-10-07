@@ -204,7 +204,21 @@ def load_previous():
         return {}
 
 
+def send_test_alert():
+    """Manual check that alert emails reach the owner: opens and closes a clearly labelled test issue."""
+    t = now_utc()
+    number = create_issue("Test alert from the KLC status monitor (no action needed)",
+                          f"This is a test sent at {colombo(t)} to confirm that alert emails reach you. "
+                          "If you received this email, real alerts will reach you too.", "test")
+    if number:
+        close(number, "Test finished. This issue is closed automatically.")
+    print(f"test alert issue: {number}")
+    return 0 if number else 1
+
+
 def main():
+    if os.environ.get("TEST_ALERT") == "true":
+        return send_test_alert()
     t = now_utc()
     prev = load_previous()
     internal = prev.get("_monitor", {}) if isinstance(prev.get("_monitor"), dict) else {}
