@@ -24,7 +24,7 @@ jobs:
       deploy: ${{ steps.run.outputs.deploy }}
     steps:
       # Use the newest status.json, not the commit that was current when this run was queued.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           ref: main
 
