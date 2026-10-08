@@ -1,52 +1,52 @@
 {
-  "state": "operational",
-  "since": "2026-10-08T04:50:10Z",
-  "checked_at": "2026-10-08T05:00:11Z",
+  "state": "outage",
+  "since": "2026-10-08T05:05:10Z",
+  "checked_at": "2026-10-08T05:05:10Z",
   "services": [
     {
       "id": "soms",
       "name": "SOMS (staff)",
-      "ok": true
+      "ok": false
     },
     {
       "id": "parent",
       "name": "Parent Portal",
-      "ok": true
+      "ok": false
     },
     {
       "id": "teacher",
       "name": "Teacher Portal",
-      "ok": true
+      "ok": false
     },
     {
       "id": "finance",
       "name": "Finance Portal",
-      "ok": true
+      "ok": false
     },
     {
       "id": "hr",
       "name": "HR",
-      "ok": true
+      "ok": false
     },
     {
       "id": "call",
       "name": "Call Centre",
-      "ok": true
+      "ok": false
     },
     {
       "id": "reports",
       "name": "Academic Reports",
-      "ok": true
+      "ok": false
     },
     {
       "id": "website",
       "name": "Website",
-      "ok": true
+      "ok": false
     }
   ],
   "_monitor": {
-    "incident_issue": null,
-    "incident_last_notice": "",
+    "incident_issue": 3,
+    "incident_last_notice": "2026-10-08T05:05:10Z",
     "ok_streak": 0,
     "cert_issue": null,
     "cert_last_notice": "",
