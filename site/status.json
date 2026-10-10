@@ -1,7 +1,7 @@
 {
   "state": "operational",
   "since": "2026-10-08T23:00:12Z",
-  "checked_at": "2026-10-10T22:00:09Z",
+  "checked_at": "2026-10-10T23:00:12Z",
   "services": [
     {
       "id": "soms",
