@@ -1,7 +1,7 @@
 {
   "state": "operational",
   "since": "2026-10-08T23:00:12Z",
-  "checked_at": "2026-10-11T20:00:10Z",
+  "checked_at": "2026-10-11T21:00:10Z",
   "services": [
     {
       "id": "soms",
@@ -41,6 +41,11 @@
     {
       "id": "website",
       "name": "Website",
+      "ok": true
+    },
+    {
+      "id": "studio",
+      "name": "Studio (teaching videos)",
       "ok": true
     }
   ],
