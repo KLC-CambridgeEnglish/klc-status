@@ -65,6 +65,12 @@ SERVICES = [
         ("https://report.klc.lk/", 200, "<title>KLC Academic Reports</title>")]},
     {"id": "website", "name": "Website", "checks": [
         ("https://www.klc.lk/", 200, "<title>KLC Cambridge English")]},
+    {"id": "studio", "name": "Studio (teaching videos)", "checks": [
+        # the public sign-in page proves the frontend answers; /api/health is the API's real health
+        # route: "ok" only when it reaches both its own database and SOMS (a 200 "degraded" means it
+        # cannot check sign-ins, so it counts as down here)
+        ("https://studio.cambridgecouncil.lk/signed-out", 200, "<title>Signed out"),
+        ("https://studio.cambridgecouncil.lk/api/health", 200, '"status":"ok"')]},
 ]
 # A site outside KLC: if this also fails, the problem is the runner's own network, not KLC.
 CONTROL = ("https://www.githubstatus.com/", 200, "GitHub")
@@ -79,7 +85,7 @@ RESTORE_DRILL_MAX_AGE_DAYS = 35
 
 CERT_HOSTS = ["soms.klc.lk", "parent.klc.lk", "teacher.klc.lk", "finance.klc.lk", "api.klc.lk",
               "finance-api.klc.lk", "hr.klc.lk", "hr-api.klc.lk", "call.klc.lk", "call-api.klc.lk",
-              "report.klc.lk", "www.klc.lk"]
+              "report.klc.lk", "www.klc.lk", "studio.cambridgecouncil.lk"]
 
 
 def now_utc():
