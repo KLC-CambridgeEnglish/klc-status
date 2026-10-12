@@ -1,7 +1,7 @@
 {
-  "state": "operational",
-  "since": "2026-10-08T23:00:12Z",
-  "checked_at": "2026-10-12T06:00:15Z",
+  "state": "partial",
+  "since": "2026-10-12T06:21:09Z",
+  "checked_at": "2026-10-12T06:21:09Z",
   "services": [
     {
       "id": "soms",
@@ -11,7 +11,7 @@
     {
       "id": "parent",
       "name": "Parent Portal",
-      "ok": true
+      "ok": false
     },
     {
       "id": "teacher",
@@ -50,8 +50,8 @@
     }
   ],
   "_monitor": {
-    "incident_issue": null,
-    "incident_last_notice": "",
+    "incident_issue": 5,
+    "incident_last_notice": "2026-10-12T06:21:09Z",
     "ok_streak": 0,
     "cert_issue": null,
     "cert_last_notice": "",
