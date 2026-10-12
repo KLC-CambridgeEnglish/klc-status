@@ -1,7 +1,7 @@
 {
   "state": "partial",
   "since": "2026-10-12T06:21:09Z",
-  "checked_at": "2026-10-12T12:00:16Z",
+  "checked_at": "2026-10-12T13:00:15Z",
   "services": [
     {
       "id": "soms",
@@ -51,7 +51,7 @@
   ],
   "_monitor": {
     "incident_issue": 5,
-    "incident_last_notice": "2026-10-12T11:42:11Z",
+    "incident_last_notice": "2026-10-12T13:00:15Z",
     "ok_streak": 0,
     "cert_issue": null,
     "cert_last_notice": "",
