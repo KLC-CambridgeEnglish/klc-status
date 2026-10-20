@@ -82,6 +82,10 @@ DISK_MIN_FREE_PCT = 15
 # Written by the monthly restore drill (restores the newest Drive backup into a throw-away database).
 RESTORE_DRILL = "https://call.klc.lk/downloads/restore-drill.json"
 RESTORE_DRILL_MAX_AGE_DAYS = 35
+# SOMS automatic assessment reminders: the public health route answers only fixed words and times (no names,
+# numbers, counts or reasons). A SYSTEM hold means the automatic sender stopped after repeated failed sends.
+REMINDER_HEALTH = os.environ.get("REMINDER_HEALTH_URL", "https://api.klc.lk/public/assessment-reminders/health")
+REMINDER_REMIND_HOURS = 24
 
 CERT_HOSTS = ["soms.klc.lk", "parent.klc.lk", "teacher.klc.lk", "finance.klc.lk", "api.klc.lk",
               "finance-api.klc.lk", "hr.klc.lk", "hr-api.klc.lk", "call.klc.lk", "call-api.klc.lk",
@@ -231,6 +235,68 @@ def send_test_alert():
     return 0 if number else 1
 
 
+REMINDER_STATES = {"OK", "SYSTEM_HOLD", "ADMIN_HOLD", "PAUSED", "OFF", "UNKNOWN"}
+
+
+def reminder_warnings(status, body, err, soms_api_down):
+    """The SOMS automatic reminders' health, from its public route. Returns (warnings, verdict):
+    HELD (a system hold: open / keep the issue), OK (healthy: counts towards closing it), NOT_DEPLOYED
+    (the route does not exist yet: silent), UNREADABLE (anything else: a log warning only, no issue).
+    Only the known keys are read and their values checked against fixed enums; nothing else from the
+    body is ever printed or written into an issue."""
+    if err or status != 200:
+        if status == 404 and '"message":"Cannot GET' in (body or ""):
+            return [], "NOT_DEPLOYED"
+        if soms_api_down:
+            return [], "UNREADABLE"   # the outage issue already covers a SOMS API that does not answer
+        return [f"the reminder health check could not be read (HTTP {status or 'no answer'})"], "UNREADABLE"
+    try:
+        doc = json.loads(body)
+    except ValueError:
+        return ["the reminder health check did not answer JSON"], "UNREADABLE"
+    if not isinstance(doc, dict) or doc.get("service") != "assessment-reminders" or doc.get("state") not in REMINDER_STATES:
+        return ["the reminder health check answered something unexpected"], "UNREADABLE"
+    hold = doc.get("systemHold")
+    if hold is True:
+        since = parse_iso(doc.get("heldSince")) if isinstance(doc.get("heldSince"), str) else None
+        when = iso(since.astimezone(dt.timezone.utc).replace(microsecond=0)) if since and since.tzinfo else "an unknown time"
+        return [f"automatic assessment reminders are on a system hold after repeated failed sends (since {when})"], "HELD"
+    if hold is False:
+        return [], "OK"
+    return ["the reminder health check could not tell whether there is a system hold"], "UNREADABLE"
+
+
+def reminder_issue_step(verdict, warnings, issue_no, last_note, ok_streak, t):
+    """One run of the reminders issue. Returns (issue_no, last_note, ok_streak). HELD opens the issue (or finds
+    the open one) and comments at most once a day; OK counts towards closing it after CLOSE_AFTER_OK_RUNS runs
+    in a row; NOT_DEPLOYED and UNREADABLE neither close nor reopen it and leave the count as it is."""
+    if verdict == "HELD":
+        ok_streak = 0
+        text = "\n".join("- " + safe(w) for w in warnings)
+        if not issue_no:
+            existing = open_issue_numbers("reminders")
+            issue_no = existing[0] if existing else None
+        if not issue_no:
+            issue_no = create_issue(
+                "SOMS automatic reminders are on a system hold",
+                f"Found by the outside monitor at {colombo(t)}.\n\n{text}\n\n"
+                "Review the failed reminders in SOMS \u2192 Reminder Automation (sign-in required), then press Resume.",
+                "reminders")
+            if issue_no:
+                last_note = t
+        elif not last_note or (t - last_note).total_seconds() >= REMINDER_REMIND_HOURS * 3600:
+            if comment(issue_no, f"Still on a system hold at {colombo(t)}:\n\n{text}"):
+                last_note = t
+    elif verdict == "OK" and issue_no:
+        ok_streak += 1
+        if ok_streak >= CLOSE_AFTER_OK_RUNS:
+            if close(issue_no, f"Automatic reminders are no longer on a system hold at {colombo(t)}."):
+                issue_no, last_note, ok_streak = None, None, 0
+    elif verdict == "OK":
+        ok_streak = 0
+    return issue_no, last_note, ok_streak
+
+
 def main():
     if os.environ.get("TEST_ALERT") == "true":
         return send_test_alert()
@@ -299,6 +365,16 @@ def main():
         backup_warnings.append(f"the restore drill result is missing (HTTP {dr_status})")
     for w in backup_warnings:
         print("BACKUP " + w)
+
+    # 2c. SOMS automatic assessment reminders: a system hold after repeated failed sends
+    soms_api_down = not cache[SOMS_API][0]
+    rm_status, rm_body, rm_err = fetch(REMINDER_HEALTH)
+    reminder_warns, reminder_verdict = reminder_warnings(rm_status, rm_body, rm_err, soms_api_down)
+    if reminder_verdict == "UNREADABLE":
+        for w in reminder_warns:
+            print("::warning::REMINDERS " + w)
+    else:
+        print(f"REMINDERS {reminder_verdict}" + "".join(" - " + w for w in reminder_warns))
     print(f"state={state} changed={changed}")
 
     # 3. outage issue (best-effort; GitHub emails the owner about new issues and comments)
@@ -379,6 +455,11 @@ def main():
         if close(backup_issue, f"Backups are healthy again at {colombo(t)}."):
             backup_issue, backup_last = None, None
 
+    # reminders issue (system hold of the SOMS automatic assessment reminders; daily reminder while it lasts)
+    reminder_issue, reminder_last, reminder_streak = reminder_issue_step(
+        reminder_verdict, reminder_warns, internal.get("reminder_issue"),
+        parse_iso(internal.get("reminder_last_notice", "")), int(internal.get("reminder_ok_streak", 0) or 0), t)
+
     # 4. status.json: on any change, and at least once an hour as a freshness heartbeat
     new_internal = {
         "incident_issue": issue_no,
@@ -388,6 +469,9 @@ def main():
         "cert_last_notice": iso(cert_last) if cert_last else "",
         "backup_issue": backup_issue,
         "backup_last_notice": iso(backup_last) if backup_last else "",
+        "reminder_issue": reminder_issue,
+        "reminder_last_notice": iso(reminder_last) if reminder_last else "",
+        "reminder_ok_streak": reminder_streak if reminder_issue else 0,
     }
     heartbeat = str(prev.get("checked_at", ""))[:13] != iso(t)[:13]
     publish = changed or heartbeat

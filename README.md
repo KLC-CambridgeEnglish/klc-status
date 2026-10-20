@@ -19,6 +19,33 @@ tell people what is happening even when that server is down.
 
 Nothing private is stored here: no passwords, no keys, no student or business data.
 
+## SOMS automatic reminders (system hold alert)
+
+SOMS sends automatic Low Mark reminders to parents (2027 batch onwards). If 5 sends in a row fail, SOMS stops
+them and puts them on a **system hold** until an authorised Admin reviews the failures and presses Resume. The
+monitor reads SOMS's public health route `https://api.klc.lk/public/assessment-reminders/health` on every run:
+
+- **On hold:** it opens an issue labelled **`reminders`** (assigned to the owner, so GitHub emails them), titled
+  "SOMS automatic reminders are on a system hold", and adds a reminder comment once a day while it lasts.
+- **Healthy again:** the issue closes itself after two healthy checks in a row.
+- **Route not there yet** (SOMS answers "Cannot GET"): nothing happens. **Anything else unreadable:** only a
+  warning line in the run log, never an issue.
+
+The route answers fixed words and times only (state, hold yes/no, since when, last run status and date). The
+monitor reads only those keys, checks them against fixed lists and never prints or posts anything else, so no
+student, parent, number or reason can reach this public repository. Reminders are not shown on the public page.
+
+The `reminders` label must exist in this repository before this check is deployed (Issues → Labels → New label).
+
+Run it locally against the test server (no `GITHUB_TOKEN` = a dry run that only prints what it would do), then
+restore `site/status.json`, which must never be committed from a local run:
+
+```bash
+REMINDER_HEALTH_URL=https://test-api.srv1590056.hstgr.cloud/public/assessment-reminders/health python monitor.py
+git checkout -- site/status.json
+python -m unittest test_monitor_reminders.py
+```
+
 **Limitation:** the checks prove that each site and app answers. They do not prove that every
 feature or the database works end to end. A `/health` endpoint in each API will make the checks
 stronger later.
