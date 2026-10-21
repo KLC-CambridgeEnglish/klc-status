@@ -35,7 +35,8 @@ The route answers fixed words and times only (state, hold yes/no, since when, la
 monitor reads only those keys, checks them against fixed lists and never prints or posts anything else, so no
 student, parent, number or reason can reach this public repository. Reminders are not shown on the public page.
 
-The `reminders` label must exist in this repository before this check is deployed (Issues → Labels → New label).
+The monitor creates the `reminders` label itself the first time it opens such an issue (it may also be created by
+hand: Issues → Labels → New label).
 
 Run it locally against the test server (no `GITHUB_TOKEN` = a dry run that only prints what it would do), then
 restore `site/status.json`, which must never be committed from a local run:

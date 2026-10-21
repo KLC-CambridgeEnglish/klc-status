@@ -203,6 +203,12 @@ def create_issue(title, body, label):
     return issue.get("number") if isinstance(issue, dict) else None
 
 
+def ensure_label(name, color, description):
+    """Best-effort: create a label the monitor needs (the run's token may manage issues). An existing label
+    answers 422, which gh_api reports as a warning and which changes nothing."""
+    return gh_api("POST", "/labels", {"name": name, "color": color, "description": description}) is not None
+
+
 def comment(number, body):
     return gh_api("POST", f"/issues/{number}/comments", {"body": body}) is not None
 
@@ -277,6 +283,7 @@ def reminder_issue_step(verdict, warnings, issue_no, last_note, ok_streak, t):
             existing = open_issue_numbers("reminders")
             issue_no = existing[0] if existing else None
         if not issue_no:
+            ensure_label("reminders", "b60205", "SOMS automatic reminders are on a system hold (opened by the monitor)")
             issue_no = create_issue(
                 "SOMS automatic reminders are on a system hold",
                 f"Found by the outside monitor at {colombo(t)}.\n\n{text}\n\n"

@@ -103,6 +103,7 @@ class Issue(unittest.TestCase):
             mock.patch.object(monitor, "comment", side_effect=lambda n, b: self.calls.append(("comment", n, b)) or True),
             mock.patch.object(monitor, "close", side_effect=lambda n, b: self.calls.append(("close", n, b)) or True),
             mock.patch.object(monitor, "open_issue_numbers", side_effect=lambda label: list(self.open_numbers)),
+            mock.patch.object(monitor, "ensure_label", side_effect=lambda *a: self.calls.append(("label",) + a) or True),
         ]
         for p in patches:
             p.start()
@@ -119,7 +120,8 @@ class Issue(unittest.TestCase):
         w, v = self.held()
         issue, last, streak = monitor.reminder_issue_step(v, w, None, None, 0, T0)
         self.assertEqual((issue, last, streak), (41, T0, 0))
-        kind, title, text, label = self.calls[0]
+        self.assertEqual(self.calls[0][:2], ("label", "reminders"))   # the label is made first if it is missing
+        kind, title, text, label = self.calls[1]
         self.assertEqual((kind, label), ("create", "reminders"))
         self.assertEqual(title, "SOMS automatic reminders are on a system hold")
         self.assertIn("Review the failed reminders in SOMS → Reminder Automation (sign-in required), then press Resume.", text)
