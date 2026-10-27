@@ -1,7 +1,7 @@
 {
   "state": "outage",
   "since": "2026-10-27T01:42:08Z",
-  "checked_at": "2026-10-27T01:42:08Z",
+  "checked_at": "2026-10-27T02:00:13Z",
   "services": [
     {
       "id": "soms",
