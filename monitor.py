@@ -71,6 +71,11 @@ SERVICES = [
         # cannot check sign-ins, so it counts as down here)
         ("https://studio.cambridgecouncil.lk/signed-out", 200, "<title>Signed out"),
         ("https://studio.cambridgecouncil.lk/api/health", 200, '"status":"ok"')]},
+    {"id": "teachers", "name": "TKT Teacher Portal", "checks": [
+        # the public home page proves the frontend answers; /api/health is the API's real health route ("db":true only
+        # when it reaches its own database). Security audit S9, 2026-10-31.
+        ("https://teachers.cambridgecouncil.lk/", 200, "Cambridge Council</title>"),
+        ("https://teachers.cambridgecouncil.lk/api/health", 200, '"db":true')]},
 ]
 # A site outside KLC: if this also fails, the problem is the runner's own network, not KLC.
 CONTROL = ("https://www.githubstatus.com/", 200, "GitHub")
@@ -89,7 +94,12 @@ REMINDER_REMIND_HOURS = 24
 
 CERT_HOSTS = ["soms.klc.lk", "parent.klc.lk", "teacher.klc.lk", "finance.klc.lk", "api.klc.lk",
               "finance-api.klc.lk", "hr.klc.lk", "hr-api.klc.lk", "call.klc.lk", "call-api.klc.lk",
-              "report.klc.lk", "www.klc.lk", "studio.cambridgecouncil.lk"]
+              "report.klc.lk", "www.klc.lk", "studio.cambridgecouncil.lk", "teachers.cambridgecouncil.lk"]
+
+# Written every 5 minutes by the TKT Teacher Portal watch on the server (/opt/klc-watch/teach-watch.sh, security audit S8):
+# a verdict in words (server errors, bursts of refused sign-ins), no names or counts.
+TEACH_WATCH = "https://call.klc.lk/downloads/teach-watch.json"
+TEACH_WATCH_MAX_AGE_MINUTES = 30
 
 
 def now_utc():
@@ -373,6 +383,25 @@ def main():
     for w in backup_warnings:
         print("BACKUP " + w)
 
+    # 2b2. the TKT Teacher Portal's own watch: server errors and refused sign-ins in the last hour
+    teach_warnings = []
+    tw_status, tw_body, tw_err = fetch(TEACH_WATCH)
+    if tw_status == 200:
+        try:
+            tw = json.loads(tw_body)
+            checked = parse_iso(tw.get("checked_at", ""))
+            if tw.get("ok") is not True:
+                teach_warnings += [str(a) for a in tw.get("alerts", [])] or ["the portal watch reported a problem"]
+            if not checked or (t - checked).total_seconds() > TEACH_WATCH_MAX_AGE_MINUTES * 60:
+                teach_warnings.append(f"the portal watch has not run for over {TEACH_WATCH_MAX_AGE_MINUTES} minutes "
+                                      f"(last: {tw.get('checked_at') or 'never'})")
+        except (ValueError, TypeError, AttributeError):
+            teach_warnings.append("the portal watch result could not be read")
+    elif not any("call.klc.lk" in p for r in down for p in r["problems"]):
+        teach_warnings.append(f"the portal watch result is missing (HTTP {tw_status or tw_err})")
+    for w in teach_warnings:
+        print("TEACHERS " + w)
+
     # 2c. SOMS automatic assessment reminders: a system hold after repeated failed sends
     soms_api_down = not cache[SOMS_API][0]
     rm_status, rm_body, rm_err = fetch(REMINDER_HEALTH)
@@ -462,6 +491,32 @@ def main():
         if close(backup_issue, f"Backups are healthy again at {colombo(t)}."):
             backup_issue, backup_last = None, None
 
+    # TKT Teacher Portal watch issue (daily reminder while it lasts)
+    teach_issue = internal.get("teach_issue")
+    teach_last = parse_iso(internal.get("teach_last_notice", ""))
+    if teach_warnings:
+        text = "\n".join("- " + safe(w) for w in teach_warnings)
+        if not teach_issue:
+            existing = open_issue_numbers("teachers-portal")
+            teach_issue = existing[0] if existing else None
+        if not teach_issue:
+            ensure_label("teachers-portal", "d93f0b", "TKT Teacher Portal: server errors or refused sign-ins (opened by the monitor)")
+            teach_issue = create_issue(
+                "TKT Teacher Portal needs attention",
+                f"Found by the outside monitor at {colombo(t)}.\n\n{text}\n\n"
+                "The details (counts and log lines) are on the server: /var/log/klc-apps/teach-watch.log and "
+                "/var/log/klc-apps/klc-soms-teach-api-sglct8-jevpid.log. Refused sign-ins are listed on each teacher's "
+                "page in CC SOMS (TKT teachers).",
+                "teachers-portal")
+            if teach_issue:
+                teach_last = t
+        elif not teach_last or (t - teach_last).total_seconds() >= 24 * 3600:
+            if comment(teach_issue, f"Still needs attention at {colombo(t)}:\n\n{text}"):
+                teach_last = t
+    elif teach_issue:
+        if close(teach_issue, f"The TKT Teacher Portal watch is clear again at {colombo(t)}."):
+            teach_issue, teach_last = None, None
+
     # reminders issue (system hold of the SOMS automatic assessment reminders; daily reminder while it lasts)
     reminder_issue, reminder_last, reminder_streak = reminder_issue_step(
         reminder_verdict, reminder_warns, internal.get("reminder_issue"),
@@ -476,6 +531,8 @@ def main():
         "cert_last_notice": iso(cert_last) if cert_last else "",
         "backup_issue": backup_issue,
         "backup_last_notice": iso(backup_last) if backup_last else "",
+        "teach_issue": teach_issue,
+        "teach_last_notice": iso(teach_last) if teach_last else "",
         "reminder_issue": reminder_issue,
         "reminder_last_notice": iso(reminder_last) if reminder_last else "",
         "reminder_ok_streak": reminder_streak if reminder_issue else 0,
