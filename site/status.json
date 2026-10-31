@@ -47,16 +47,23 @@
       "id": "studio",
       "name": "Studio (teaching videos)",
       "ok": true
+    },
+    {
+      "id": "teachers",
+      "name": "TKT Teacher Portal",
+      "ok": true
     }
   ],
   "_monitor": {
     "incident_issue": 5,
-    "incident_last_notice": "2026-10-31T02:21:09Z",
+    "incident_last_notice": "2026-10-31T03:42:08Z",
     "ok_streak": 0,
     "cert_issue": null,
     "cert_last_notice": "",
     "backup_issue": null,
     "backup_last_notice": "",
+    "teach_issue": null,
+    "teach_last_notice": "",
     "reminder_issue": null,
     "reminder_last_notice": "",
     "reminder_ok_streak": 0
