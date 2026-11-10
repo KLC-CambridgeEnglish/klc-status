@@ -1,7 +1,7 @@
 {
   "state": "partial",
   "since": "2026-11-10T01:21:09Z",
-  "checked_at": "2026-11-10T21:00:12Z",
+  "checked_at": "2026-11-10T22:00:11Z",
   "services": [
     {
       "id": "soms",
@@ -60,8 +60,8 @@
     "ok_streak": 0,
     "cert_issue": null,
     "cert_last_notice": "",
-    "backup_issue": 8,
-    "backup_last_notice": "2026-11-10T01:21:09Z",
+    "backup_issue": null,
+    "backup_last_notice": "",
     "teach_issue": null,
     "teach_last_notice": "",
     "reminder_issue": null,
