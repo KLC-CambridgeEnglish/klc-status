@@ -1,12 +1,12 @@
 {
-  "state": "partial",
-  "since": "2026-11-10T01:21:09Z",
-  "checked_at": "2026-11-11T04:00:10Z",
+  "state": "outage",
+  "since": "2026-11-11T04:42:08Z",
+  "checked_at": "2026-11-11T04:42:08Z",
   "services": [
     {
       "id": "soms",
       "name": "SOMS (staff)",
-      "ok": true
+      "ok": false
     },
     {
       "id": "parent",
@@ -16,17 +16,17 @@
     {
       "id": "teacher",
       "name": "Teacher Portal",
-      "ok": true
+      "ok": false
     },
     {
       "id": "finance",
       "name": "Finance Portal",
-      "ok": true
+      "ok": false
     },
     {
       "id": "hr",
       "name": "HR",
-      "ok": true
+      "ok": false
     },
     {
       "id": "call",
@@ -36,27 +36,27 @@
     {
       "id": "reports",
       "name": "Academic Reports",
-      "ok": true
+      "ok": false
     },
     {
       "id": "website",
       "name": "Website",
-      "ok": true
+      "ok": false
     },
     {
       "id": "studio",
       "name": "Studio (teaching videos)",
-      "ok": true
+      "ok": false
     },
     {
       "id": "teachers",
       "name": "TKT Teacher Portal",
-      "ok": true
+      "ok": false
     }
   ],
   "_monitor": {
     "incident_issue": 5,
-    "incident_last_notice": "2026-11-11T03:42:12Z",
+    "incident_last_notice": "2026-11-11T04:42:08Z",
     "ok_streak": 0,
     "cert_issue": null,
     "cert_last_notice": "",
