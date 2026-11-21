@@ -62,8 +62,8 @@
     "cert_last_notice": "",
     "backup_issue": null,
     "backup_last_notice": "",
-    "teach_issue": null,
-    "teach_last_notice": "",
+    "teach_issue": 10,
+    "teach_last_notice": "2026-11-21T10:21:08Z",
     "reminder_issue": null,
     "reminder_last_notice": "",
     "reminder_ok_streak": 0
