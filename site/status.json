@@ -56,14 +56,14 @@
   ],
   "_monitor": {
     "incident_issue": 5,
-    "incident_last_notice": "2026-11-23T14:42:12Z",
+    "incident_last_notice": "2026-11-23T15:42:20Z",
     "ok_streak": 0,
     "cert_issue": null,
     "cert_last_notice": "",
     "backup_issue": null,
     "backup_last_notice": "",
-    "teach_issue": 13,
-    "teach_last_notice": "2026-11-23T14:42:12Z",
+    "teach_issue": null,
+    "teach_last_notice": "",
     "reminder_issue": null,
     "reminder_last_notice": "",
     "reminder_ok_streak": 0
