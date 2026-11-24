@@ -1,7 +1,7 @@
 {
   "state": "operational",
   "since": "2026-11-24T20:42:15Z",
-  "checked_at": "2026-11-24T20:42:15Z",
+  "checked_at": "2026-11-24T21:00:11Z",
   "services": [
     {
       "id": "soms",
@@ -55,15 +55,15 @@
     }
   ],
   "_monitor": {
-    "incident_issue": 16,
-    "incident_last_notice": "2026-11-24T20:21:09Z",
-    "ok_streak": 1,
+    "incident_issue": null,
+    "incident_last_notice": "",
+    "ok_streak": 0,
     "cert_issue": null,
     "cert_last_notice": "",
     "backup_issue": null,
     "backup_last_notice": "",
-    "teach_issue": null,
-    "teach_last_notice": "",
+    "teach_issue": 17,
+    "teach_last_notice": "2026-11-24T21:00:11Z",
     "reminder_issue": null,
     "reminder_last_notice": "",
     "reminder_ok_streak": 0
