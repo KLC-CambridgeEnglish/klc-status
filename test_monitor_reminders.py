@@ -188,6 +188,8 @@ class MainDryRun(unittest.TestCase):
                 return 200, heartbeat, ""
             if url == monitor.RESTORE_DRILL:
                 return 200, drill, ""
+            if url == monitor.TEACH_WATCH:
+                return 200, json.dumps({"ok": True, "checked_at": monitor.iso(monitor.now_utc())}), ""
             raise AssertionError(f"unexpected fetch {url}")
 
         env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_TOKEN", "GITHUB_REPOSITORY", "GITHUB_OUTPUT", "TEST_ALERT")}
