@@ -48,7 +48,7 @@ SERVICES = [
     {"id": "soms", "name": "SOMS (staff)", "checks": [
         ("https://soms.klc.lk/login", 200, "<title>KLC SOMS</title>"), SOMS_API]},
     {"id": "parent", "name": "Parent Portal", "checks": [
-        ("https://parent.klc.lk/", 200, "<title>KLC SOMS</title>"), SOMS_API]},
+        ("https://parent.klc.lk/", 200, "<title>KLC Parent Portal</title>"), SOMS_API]},
     {"id": "teacher", "name": "Teacher Portal", "checks": [
         ("https://teacher.klc.lk/", 200, "<title>KLC SOMS</title>"), SOMS_API]},
     {"id": "finance", "name": "Finance Portal", "checks": [
@@ -58,7 +58,7 @@ SERVICES = [
         ("https://hr.klc.lk/", 200, "<title>KLC HR Portal</title>"),
         ("https://hr-api.klc.lk/api/zz-status-probe", 404, '"message":"Cannot GET /api/zz-status-probe"')]},
     {"id": "call", "name": "Call Centre", "checks": [
-        ("https://call.klc.lk/", 200, "<title>KLC Call Intelligence</title>"),
+        ("https://call.klc.lk/", 200, "<title>KLC &amp; CC Communication</title>"),
         # this health route also reports the shared database, so it doubles as a database-down check
         ("https://call-api.klc.lk/api/v1/health", 200, '"db":"connected"')]},
     {"id": "reports", "name": "Academic Reports", "checks": [
@@ -119,6 +119,18 @@ def parse_iso(s):
 
 def colombo(t):
     return t.astimezone(COLOMBO).strftime("%d %b %Y, %I:%M %p") + " Sri Lanka time"
+
+
+def when(s, missing="never"):
+    """A time read from a server file (UTC, e.g. 2026-11-22T21:42:49Z) as Sri Lanka time for the alert text.
+    The nightly backup runs at 21:00 UTC, which is 02:30 AM the NEXT day in Sri Lanka, so the raw value
+    showed the wrong day to the reader."""
+    t = parse_iso(s) if isinstance(s, str) and s else None
+    if not t:
+        return missing
+    if not t.tzinfo:
+        t = t.replace(tzinfo=dt.timezone.utc)
+    return colombo(t)
 
 
 def safe(s):
@@ -275,8 +287,8 @@ def reminder_warnings(status, body, err, soms_api_down):
     hold = doc.get("systemHold")
     if hold is True:
         since = parse_iso(doc.get("heldSince")) if isinstance(doc.get("heldSince"), str) else None
-        when = iso(since.astimezone(dt.timezone.utc).replace(microsecond=0)) if since and since.tzinfo else "an unknown time"
-        return [f"automatic assessment reminders are on a system hold after repeated failed sends (since {when})"], "HELD"
+        held = colombo(since) if since and since.tzinfo else "an unknown time"
+        return [f"automatic assessment reminders are on a system hold after repeated failed sends (since {held})"], "HELD"
     if hold is False:
         return [], "OK"
     return ["the reminder health check could not tell whether there is a system hold"], "UNREADABLE"
@@ -358,9 +370,9 @@ def main():
             hb = json.loads(hb_body)
             last = parse_iso(hb.get("last_success", ""))
             if hb.get("ok") is not True:
-                backup_warnings.append(f"the last backup run at {hb.get('last_attempt', '?')} had {hb.get('errors', '?')} error(s)")
+                backup_warnings.append(f"the last backup run at {when(hb.get('last_attempt'), '?')} had {hb.get('errors', '?')} error(s)")
             if not last or (t - last).total_seconds() > BACKUP_MAX_AGE_HOURS * 3600:
-                backup_warnings.append(f"no successful backup for over {BACKUP_MAX_AGE_HOURS} hours (last: {hb.get('last_success') or 'never'})")
+                backup_warnings.append(f"no successful backup for over {BACKUP_MAX_AGE_HOURS} hours (last: {when(hb.get('last_success'))})")
             if int(hb.get("disk_free_pct", 100)) < DISK_MIN_FREE_PCT:
                 backup_warnings.append(f"the server disk is almost full ({hb.get('disk_free_pct')}% free)")
         except (ValueError, TypeError):
@@ -373,9 +385,9 @@ def main():
             dr = json.loads(dr_body)
             drill_at = parse_iso(dr.get("drill_at", ""))
             if dr.get("ok") is not True:
-                backup_warnings.append(f"the restore drill on {dr.get('drill_at', '?')} failed ({dr.get('errors', '?')} error(s))")
+                backup_warnings.append(f"the restore drill on {when(dr.get('drill_at'), '?')} failed ({dr.get('errors', '?')} error(s))")
             if not drill_at or (t - drill_at).days > RESTORE_DRILL_MAX_AGE_DAYS:
-                backup_warnings.append(f"no restore drill for over {RESTORE_DRILL_MAX_AGE_DAYS} days (last: {dr.get('drill_at') or 'never'})")
+                backup_warnings.append(f"no restore drill for over {RESTORE_DRILL_MAX_AGE_DAYS} days (last: {when(dr.get('drill_at'))})")
         except (ValueError, TypeError):
             backup_warnings.append("the restore drill result could not be read")
     elif not any("call.klc.lk" in p for r in down for p in r["problems"]):
@@ -394,7 +406,7 @@ def main():
                 teach_warnings += [str(a) for a in tw.get("alerts", [])] or ["the portal watch reported a problem"]
             if not checked or (t - checked).total_seconds() > TEACH_WATCH_MAX_AGE_MINUTES * 60:
                 teach_warnings.append(f"the portal watch has not run for over {TEACH_WATCH_MAX_AGE_MINUTES} minutes "
-                                      f"(last: {tw.get('checked_at') or 'never'})")
+                                      f"(last: {when(tw.get('checked_at'))})")
         except (ValueError, TypeError, AttributeError):
             teach_warnings.append("the portal watch result could not be read")
     elif not any("call.klc.lk" in p for r in down for p in r["problems"]):

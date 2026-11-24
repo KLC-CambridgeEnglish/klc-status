@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 10
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.first_try.outputs.page_url || steps.deployment.outputs.page_url }}
     steps:
       # Always publish the newest commit on main (the monitor may have just saved a new status.json).
       - uses: actions/checkout@v7
@@ -32,5 +32,15 @@ jobs:
       - uses: actions/upload-pages-artifact@v5
         with:
           path: site
+      # GitHub sometimes cannot see the artifact for a short while after it is uploaded
+      # ("No artifacts named github-pages were found"): that failed the whole run and emailed the owner
+      # every hour. Try once, and if it fails wait and try again before giving up.
+      - id: first_try
+        continue-on-error: true
+        uses: actions/deploy-pages@v5
+      - name: Wait before the second try
+        if: steps.first_try.outcome == 'failure'
+        run: sleep 45
       - id: deployment
+        if: steps.first_try.outcome == 'failure'
         uses: actions/deploy-pages@v5

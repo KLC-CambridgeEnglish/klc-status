@@ -28,7 +28,7 @@ class Verdicts(unittest.TestCase):
         w, v = monitor.reminder_warnings(200, body(HEALTH_HELD), "", False)
         self.assertEqual(v, "HELD")
         self.assertEqual(w, ["automatic assessment reminders are on a system hold after repeated failed sends "
-                             "(since 2027-01-18T10:42:13Z)"])
+                             "(since 18 Jan 2027, 04:12 PM Sri Lanka time)"])
 
     def test_ok(self):
         self.assertEqual(monitor.reminder_warnings(200, body(HEALTH_OK), "", False), ([], "OK"))
