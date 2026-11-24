@@ -55,9 +55,9 @@
     }
   ],
   "_monitor": {
-    "incident_issue": 5,
-    "incident_last_notice": "2026-11-24T04:00:12Z",
-    "ok_streak": 1,
+    "incident_issue": null,
+    "incident_last_notice": "",
+    "ok_streak": 0,
     "cert_issue": null,
     "cert_last_notice": "",
     "backup_issue": 14,
