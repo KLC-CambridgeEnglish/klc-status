@@ -1,7 +1,7 @@
 {
-  "state": "partial",
-  "since": "2026-11-23T05:21:08Z",
-  "checked_at": "2026-11-24T04:00:12Z",
+  "state": "operational",
+  "since": "2026-11-24T04:16:14Z",
+  "checked_at": "2026-11-24T04:16:14Z",
   "services": [
     {
       "id": "soms",
@@ -11,7 +11,7 @@
     {
       "id": "parent",
       "name": "Parent Portal",
-      "ok": false
+      "ok": true
     },
     {
       "id": "teacher",
@@ -31,7 +31,7 @@
     {
       "id": "call",
       "name": "Call Centre",
-      "ok": false
+      "ok": true
     },
     {
       "id": "reports",
@@ -57,7 +57,7 @@
   "_monitor": {
     "incident_issue": 5,
     "incident_last_notice": "2026-11-24T04:00:12Z",
-    "ok_streak": 0,
+    "ok_streak": 1,
     "cert_issue": null,
     "cert_last_notice": "",
     "backup_issue": 14,
