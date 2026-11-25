@@ -41,7 +41,7 @@ a single machine that could not reach the server. If both machines cannot reach 
 is still raised.
 
 To prove the second look works end to end without an outage (the first machine pretends it got no answer, the
-second does the real check):
+second does the real check, records it and republishes the page):
 
 ```bash
 gh workflow run monitor.yml -R KLC-CambridgeEnglish/klc-status -f test_second_opinion=true

@@ -63,10 +63,14 @@ class Rule(unittest.TestCase):
 class Runs(unittest.TestCase):
     """main() end to end with every network and GitHub call faked."""
 
-    def run_main(self, klc, control=UP, env=None, overrides=None):
-        """klc: what every KLC check gets back; overrides: {url: result} for single checks."""
+    def run_main(self, klc, control=UP, env=None, overrides=None, prev=None):
+        """klc: what every KLC check gets back; overrides: {url: result} for single checks;
+        prev: the status.json left by the run before (none = a first run ever)."""
         tmp = tempfile.mkdtemp()
         status_file, out_file = os.path.join(tmp, "status.json"), os.path.join(tmp, "out.txt")
+        if prev is not None:
+            with open(status_file, "w", encoding="utf-8") as f:
+                json.dump(prev, f)
         answers = {c[0]: klc for svc in monitor.SERVICES for c in svc["checks"]}
         answers[monitor.CONTROL[0]] = control
         answers.update(overrides or {})
@@ -190,13 +194,31 @@ class Runs(unittest.TestCase):
 
     # --- the manual test switch ----------------------------------------------------------------------------
 
-    def test_manual_test_forces_the_second_look_and_the_second_runner_ignores_the_switch(self):
+    def test_manual_test_forces_the_second_look_and_the_second_runner_does_the_real_check(self):
         doc, out = self.run_main(UP, env={"TEST_SECOND_OPINION": "true"})
         self.assertIsNone(doc)
         self.assertEqual(out, {"second_opinion": "true", "written": "false", "deploy": "false"})
         doc, out = self.run_main(UP, env={"TEST_SECOND_OPINION": "true", "SECOND_OPINION": "true"})
         self.assertEqual(doc["state"], "operational")
         self.assertNotIn("second_opinion", out)
+
+    def healthy_status_from_a_moment_ago(self):
+        """What a healthy run in this same hour leaves behind: nothing changed, nothing to republish."""
+        doc, _ = self.run_main(UP)
+        return doc
+
+    def test_a_second_runner_republishes_only_when_something_changed(self):
+        prev = self.healthy_status_from_a_moment_ago()
+        if prev["checked_at"][:13] != monitor.iso(monitor.now_utc())[:13]:
+            self.skipTest("the hour changed during the test")
+        _, out = self.run_main(UP, env={"SECOND_OPINION": "true"}, prev=prev)
+        self.assertEqual((out["written"], out["deploy"]), ("false", "false"))
+
+    def test_a_manual_test_also_republishes_the_page_so_it_covers_the_whole_chain(self):
+        prev = self.healthy_status_from_a_moment_ago()
+        doc, out = self.run_main(UP, env={"SECOND_OPINION": "true", "TEST_SECOND_OPINION": "true"}, prev=prev)
+        self.assertEqual((out["written"], out["deploy"]), ("true", "true"))
+        self.assertEqual(doc["state"], "operational")
 
 
 if __name__ == "__main__":

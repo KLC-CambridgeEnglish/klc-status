@@ -79,6 +79,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SECOND_OPINION: "true"
+          # on a manual test this run also republishes the page, so the test covers the whole chain
+          TEST_SECOND_OPINION: ${{ github.event.inputs.test_second_opinion || 'false' }}
 
       - name: Save status
         if: steps.run.outputs.written == 'true'

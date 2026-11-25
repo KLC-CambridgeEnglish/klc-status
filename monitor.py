@@ -608,7 +608,9 @@ def main():
         "reminder_ok_streak": reminder_streak if reminder_issue else 0,
     }
     heartbeat = str(prev.get("checked_at", ""))[:13] != iso(t)[:13]
-    publish = changed or heartbeat
+    # A manual test of the second look also republishes the page (with this real check's time), so one test
+    # run proves the whole chain: first runner hands over, second runner records, the page is published.
+    publish = changed or heartbeat or (second_opinion and forced)
     written = publish or new_internal != internal
     if written:
         doc = {
