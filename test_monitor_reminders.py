@@ -192,10 +192,11 @@ class MainDryRun(unittest.TestCase):
                 return 200, json.dumps({"ok": True, "checked_at": monitor.iso(monitor.now_utc())}), ""
             raise AssertionError(f"unexpected fetch {url}")
 
-        env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_TOKEN", "GITHUB_REPOSITORY", "GITHUB_OUTPUT", "TEST_ALERT")}
+        env = {k: v for k, v in os.environ.items() if k not in ("GITHUB_TOKEN", "GITHUB_REPOSITORY", "GITHUB_OUTPUT", "TEST_ALERT",
+                                                                 "SECOND_OPINION", "TEST_SECOND_OPINION")}
         with mock.patch.dict(os.environ, env, clear=True), \
                 mock.patch.object(monitor, "STATUS_FILE", status_file), \
-                mock.patch.object(monitor, "check", return_value=(True, "HTTP 200")), \
+                mock.patch.object(monitor, "check", return_value=(True, "HTTP 200", True)), \
                 mock.patch.object(monitor, "cert_days_left", return_value=60), \
                 mock.patch.object(monitor, "fetch", side_effect=fake_fetch):
             self.assertEqual(monitor.main(), 0)

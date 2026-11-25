@@ -19,6 +19,34 @@ tell people what is happening even when that server is down.
 
 Nothing private is stored here: no passwords, no keys, no student or business data.
 
+## A second opinion before "nothing answers" is recorded
+
+Each check runs on one GitHub machine, which is one place on the internet. On 24 and 25 November 2026 such a
+machine could not connect to the KLC server for a few minutes while the server was answering everybody else
+(its own access log shows visitors being served in those same minutes). The page turned red and the owner was
+emailed "all KLC systems not answering" about a server that was fine.
+
+So since 25 November 2026:
+
+- If the first machine gets **no answer at all** from any KLC address (timeouts, refused connections), it
+  records nothing. A second machine at another address then does the whole check again (the
+  **Second opinion** job in `monitor.yml`). Only what the second machine sees is recorded and emailed. An issue
+  opened this way says "checked from two separate monitor locations".
+- If KLC **answers with an error** (a 502 page, a wrong page, one address down while others answer), the road
+  to the server clearly works, so the fault is recorded at once by the first machine, as before.
+- The same second look is taken when the control site outside KLC does not answer the first machine either.
+
+A real outage is therefore still reported, about as fast as before. What no longer happens is an alert caused by
+a single machine that could not reach the server. If both machines cannot reach it at the same moment, an alert
+is still raised.
+
+To prove the second look works end to end without an outage (the first machine pretends it got no answer, the
+second does the real check):
+
+```bash
+gh workflow run monitor.yml -R KLC-CambridgeEnglish/klc-status -f test_second_opinion=true
+```
+
 ## SOMS automatic reminders (system hold alert)
 
 SOMS sends automatic Low Mark reminders to parents (2027 batch onwards). If 5 sends in a row fail, SOMS stops
@@ -44,7 +72,7 @@ restore `site/status.json`, which must never be committed from a local run:
 ```bash
 REMINDER_HEALTH_URL=https://test-api.srv1590056.hstgr.cloud/public/assessment-reminders/health python monitor.py
 git checkout -- site/status.json
-python -m unittest test_monitor_reminders.py
+python -m unittest test_monitor_reminders.py test_monitor_second_opinion.py
 ```
 
 **Limitation:** the checks prove that each site and app answers. They do not prove that every

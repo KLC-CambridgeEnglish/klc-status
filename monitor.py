@@ -11,6 +11,15 @@ report when that server is unreachable. It:
   4. opens a GitHub issue when something goes down (GitHub emails the repository owner),
      comments on it every hour while it stays down, and closes it after two healthy runs in a row.
 
+A second opinion before "nothing answers" (2026-11-25). One run looks from ONE place on the internet. Twice
+(24 and 25 Nov 2026) that place could not open a connection to the KLC server for a few minutes while the
+server was answering everybody else (its own access log shows visitors served in those very minutes), and the
+owner was emailed "all KLC systems not answering" about a server that was fine. So when a run gets no answer
+at all from any KLC address, it records nothing and asks the workflow for a second opinion: the same check
+again from another machine at another address (SECOND_OPINION=true). Only what that second place sees is
+recorded and emailed. An answer of any kind, even an error page, proves the road to the server works, so
+those failures are recorded at once, as before.
+
 The status page must never depend on GitHub's issue API: every API call is best-effort.
 Only Python's standard library is used. Nothing secret is stored here; GITHUB_TOKEN is the
 short-lived token GitHub gives each run.
@@ -156,24 +165,42 @@ def fetch(url):
 
 
 def check_once(url, want_status, want_text):
+    """Return (ok, detail, answered). answered is False only when nothing came back at all (a timeout, a
+    refused connection, a certificate or name-lookup failure): then the fault may be on the road between
+    this runner and the server rather than in the server."""
     status, body, err = fetch(url)
     if err:
-        return False, err
+        return False, err, False
     if status != want_status:
-        return False, f"HTTP {status} (expected {want_status})"
+        return False, f"HTTP {status} (expected {want_status})", True
     if want_text not in body:
-        return False, f"HTTP {status} but the expected page content was missing"
-    return True, f"HTTP {status}"
+        return False, f"HTTP {status} but the expected page content was missing", True
+    return True, f"HTTP {status}", True
 
 
 def check(url, want_status, want_text):
-    ok, detail = check_once(url, want_status, want_text)
+    ok, detail, answered = check_once(url, want_status, want_text)
     for _ in range(RETRIES):
         if ok:
             break
         time.sleep(RETRY_WAIT)
-        ok, detail = check_once(url, want_status, want_text)
-    return ok, detail
+        ok, detail, answered = check_once(url, want_status, want_text)
+    return ok, detail, answered
+
+
+def needs_second_opinion(any_down, klc_answered, control_ok):
+    """True when what this one runner saw cannot be trusted on its own: something looks down AND either not
+    one KLC address answered it at all, or the control site outside KLC did not answer it either. Both mean
+    "this runner may simply be unable to reach the server", which only a look from another place can settle."""
+    return bool(any_down) and (not klc_answered or not control_ok)
+
+
+def set_outputs(**values):
+    """Hand values to the workflow (later steps and jobs read them). Does nothing outside GitHub Actions."""
+    out = os.environ.get("GITHUB_OUTPUT")
+    if out:
+        with open(out, "a", encoding="utf-8") as f:
+            f.write("".join(f"{k}={v}\n" for k, v in values.items()))
 
 
 def cert_days_left(host):
@@ -329,6 +356,7 @@ def reminder_issue_step(verdict, warnings, issue_no, last_note, ok_streak, t):
 def main():
     if os.environ.get("TEST_ALERT") == "true":
         return send_test_alert()
+    second_opinion = os.environ.get("SECOND_OPINION") == "true"   # this run IS the look from another place
     t = now_utc()
     prev = load_previous()
     internal = prev.get("_monitor", {}) if isinstance(prev.get("_monitor"), dict) else {}
@@ -345,18 +373,47 @@ def main():
 
     for r in results:
         print(("OK   " if r["ok"] else "DOWN ") + r["name"] + "".join("\n       " + p for p in r["problems"]))
-    if down and not cache[CONTROL][0]:
+
+    # 1b. Is this runner's view enough? If not one KLC address answered it (or the control site did not
+    # either), record nothing and let another runner look. TEST_SECOND_OPINION=true forces that path by hand
+    # (gh workflow run monitor.yml -f test_second_opinion=true) to prove the second look works end to end.
+    klc_answered = any(cache[c][2] for c in unique if c != CONTROL)
+    control_ok = cache[CONTROL][0]
+    forced = os.environ.get("TEST_SECOND_OPINION") == "true"
+    if not second_opinion and (forced or needs_second_opinion(down, klc_answered, control_ok)):
+        why = ("this is a manual test of the second look" if forced else
+               "no KLC address answered this runner" if not klc_answered else
+               f"the control site did not answer this runner ({cache[CONTROL][1]})")
+        print(f"::notice::Second opinion needed: {why}. Nothing is recorded by this run; "
+              "another runner at another address checks again now.")
+        set_outputs(second_opinion="true", written="false", deploy="false")
+        return 0
+    if down and not control_ok:
         print(f"::warning::The monitor's own network looks broken ({cache[CONTROL][1]}); nothing recorded this run.")
         return 0
+    if second_opinion:
+        print("Second opinion: " + ("this runner also sees a problem; it is recorded." if down else
+                                    "everything answers from here, so KLC is fine. What the first runner saw was on "
+                                    "its own road to the server (or this was a manual test)."))
 
     state = "operational" if not down else ("outage" if len(down) == len(results) else "partial")
     down_ids = sorted(r["id"] for r in down)
     prev_down_ids = sorted(s.get("id") for s in prev.get("services", []) if not s.get("ok", True))
     changed = state != prev.get("state") or down_ids != prev_down_ids
 
-    # 2. certificates close to expiry
-    with ThreadPoolExecutor(max_workers=len(CERT_HOSTS)) as pool:
-        days_left = dict(zip(CERT_HOSTS, pool.map(cert_days_left, CERT_HOSTS)))
+    # 2. certificates close to expiry. When not one KLC address answered (already seen from two places), the
+    # certificates and the server's own files below cannot be read either. Do not wait 20 seconds for each of
+    # them: the outage alert must not be held up. (They then count as "could not be read", exactly as a
+    # failed read always has: no certificate, backup, portal-watch or reminder warning comes from it.)
+    if klc_answered:
+        with ThreadPoolExecutor(max_workers=len(CERT_HOSTS)) as pool:
+            days_left = dict(zip(CERT_HOSTS, pool.map(cert_days_left, CERT_HOSTS)))
+        read = fetch
+    else:
+        days_left = {h: None for h in CERT_HOSTS}
+
+        def read(url):
+            return 0, "", "not tried: no KLC address answered"
     cert_warnings = [f"{h}: certificate expires in {d} days" for h, d in days_left.items()
                      if d is not None and d < CERT_WARN_DAYS]
     for w in cert_warnings:
@@ -364,7 +421,7 @@ def main():
 
     # 2b. nightly backup and disk space, from the heartbeat the backup job publishes
     backup_warnings = []
-    hb_status, hb_body, hb_err = fetch(BACKUP_HEARTBEAT)
+    hb_status, hb_body, hb_err = read(BACKUP_HEARTBEAT)
     if hb_status == 200:
         try:
             hb = json.loads(hb_body)
@@ -377,9 +434,9 @@ def main():
                 backup_warnings.append(f"the server disk is almost full ({hb.get('disk_free_pct')}% free)")
         except (ValueError, TypeError):
             backup_warnings.append("the backup heartbeat file could not be read")
-    elif not any("call.klc.lk" in p for r in down for p in r["problems"]):
+    elif klc_answered and not any("call.klc.lk" in p for r in down for p in r["problems"]):
         backup_warnings.append(f"the backup heartbeat is missing (HTTP {hb_status or hb_err})")
-    dr_status, dr_body, _ = fetch(RESTORE_DRILL)
+    dr_status, dr_body, _ = read(RESTORE_DRILL)
     if dr_status == 200:
         try:
             dr = json.loads(dr_body)
@@ -390,14 +447,14 @@ def main():
                 backup_warnings.append(f"no restore drill for over {RESTORE_DRILL_MAX_AGE_DAYS} days (last: {when(dr.get('drill_at'))})")
         except (ValueError, TypeError):
             backup_warnings.append("the restore drill result could not be read")
-    elif not any("call.klc.lk" in p for r in down for p in r["problems"]):
+    elif klc_answered and not any("call.klc.lk" in p for r in down for p in r["problems"]):
         backup_warnings.append(f"the restore drill result is missing (HTTP {dr_status})")
     for w in backup_warnings:
         print("BACKUP " + w)
 
     # 2b2. the TKT Teacher Portal's own watch: server errors and refused sign-ins in the last hour
     teach_warnings = []
-    tw_status, tw_body, tw_err = fetch(TEACH_WATCH)
+    tw_status, tw_body, tw_err = read(TEACH_WATCH)
     if tw_status == 200:
         try:
             tw = json.loads(tw_body)
@@ -409,14 +466,14 @@ def main():
                                       f"(last: {when(tw.get('checked_at'))})")
         except (ValueError, TypeError, AttributeError):
             teach_warnings.append("the portal watch result could not be read")
-    elif not any("call.klc.lk" in p for r in down for p in r["problems"]):
+    elif klc_answered and not any("call.klc.lk" in p for r in down for p in r["problems"]):
         teach_warnings.append(f"the portal watch result is missing (HTTP {tw_status or tw_err})")
     for w in teach_warnings:
         print("TEACHERS " + w)
 
     # 2c. SOMS automatic assessment reminders: a system hold after repeated failed sends
     soms_api_down = not cache[SOMS_API][0]
-    rm_status, rm_body, rm_err = fetch(REMINDER_HEALTH)
+    rm_status, rm_body, rm_err = read(REMINDER_HEALTH)
     reminder_warns, reminder_verdict = reminder_warnings(rm_status, rm_body, rm_err, soms_api_down)
     if reminder_verdict == "UNREADABLE":
         for w in reminder_warns:
@@ -436,9 +493,10 @@ def main():
             existing = open_issue_numbers("outage")
             issue_no = existing[0] if existing else None
         if not issue_no:
+            seen_twice = " (checked from two separate monitor locations)" if second_opinion else ""
             issue_no = create_issue(
                 f"KLC systems not answering: {names}",
-                f"Detected by the outside monitor at {colombo(t)}.\n\n{details}\n\n"
+                f"Detected by the outside monitor at {colombo(t)}{seen_twice}.\n\n{details}\n\n"
                 "This issue closes itself when everything answers again. Status page: https://status.klc.lk",
                 "outage")
             if issue_no:
@@ -565,10 +623,7 @@ def main():
             f.write("\n")
         print("status.json updated")
 
-    out = os.environ.get("GITHUB_OUTPUT")
-    if out:
-        with open(out, "a", encoding="utf-8") as f:
-            f.write(f"state={state}\nwritten={'true' if written else 'false'}\ndeploy={'true' if publish else 'false'}\n")
+    set_outputs(state=state, written="true" if written else "false", deploy="true" if publish else "false")
     return 0
 
 
