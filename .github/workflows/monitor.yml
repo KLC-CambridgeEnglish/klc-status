@@ -47,10 +47,13 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add site/status.json
           git commit -m "status: ${{ steps.run.outputs.state }}"
-          for i in 1 2 3; do
+          # GitHub sometimes refuses the push for a short while ("remote rejected ... Internal Server Error",
+          # 2026-11-25): three tries in 15 seconds all failed and the owner got a "Run failed" email. Keep
+          # trying for about three minutes, waiting longer each time, before giving up.
+          for wait in 10 20 40 60 60 0; do
             git pull --rebase origin main && git push origin HEAD:main && exit 0
             git rebase --abort || true
-            sleep 5
+            sleep "$wait"
           done
           exit 1
 
