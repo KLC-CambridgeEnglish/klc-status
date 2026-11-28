@@ -1,7 +1,7 @@
 {
   "state": "operational",
   "since": "2026-11-25T06:00:17Z",
-  "checked_at": "2026-11-28T11:00:11Z",
+  "checked_at": "2026-11-28T12:00:13Z",
   "services": [
     {
       "id": "soms",
@@ -62,8 +62,8 @@
     "cert_last_notice": "",
     "backup_issue": null,
     "backup_last_notice": "",
-    "teach_issue": 22,
-    "teach_last_notice": "2026-11-28T11:00:11Z",
+    "teach_issue": null,
+    "teach_last_notice": "",
     "reminder_issue": null,
     "reminder_last_notice": "",
     "reminder_ok_streak": 0
